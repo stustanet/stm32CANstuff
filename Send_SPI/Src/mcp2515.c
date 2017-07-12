@@ -9,15 +9,15 @@
 #include "stm32f0xx_hal.h"
 #include "stm32f0xx_hal_conf.h"
 
-#define SPI_RESET       (0xC0)
-#define	SPI_READ		    (0x03)
-#define	SPI_READ_RX		  (0x90)
-#define	SPI_WRITE		    (0x02)
-#define	SPI_WRITE_TX	  (0x40)
-#define	SPI_RTS			    (0x80)
-#define SPI_READ_STATUS	(0xA0)
-#define	SPI_RX_STATUS	  (0xB0)
-#define	SPI_BIT_MODIFY  (0x05)
+#define SPI_RESET         (0xC0)
+#define	SPI_READ          (0x03)
+#define	SPI_READ_RX       (0x90)
+#define	SPI_WRITE         (0x02)
+#define	SPI_WRITE_TX      (0x40)
+#define	SPI_RTS           (0x80)
+#define SPI_READ_STATUS   (0xA0)
+#define	SPI_RX_STATUS     (0xB0)
+#define	SPI_BIT_MODIFY    (0x05)
 
 // SPI handle
 static SPI_HandleTypeDef spi = { .Instance = SPI1 };
@@ -35,7 +35,7 @@ static void _spi_init() {
   spi.Init.CLKPolarity = SPI_POLARITY_HIGH;
   spi.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLED;
   spi.Init.DataSize = SPI_DATASIZE_8BIT;
-  spi.Init.FirstBit = SPI_FIRSTBIT_LSB;
+  spi.Init.FirstBit = SPI_FIRSTBIT_MSB;
   spi.Init.NSS = SPI_NSS_SOFT;
   spi.Init.TIMode = SPI_TIMODE_DISABLED;
   spi.Init.Mode = SPI_MODE_MASTER;
@@ -61,7 +61,13 @@ void mcp2515_init() {
   // Init SPI
   _spi_init();
   _mcp2515_deselect();
-  mcp2515_reset();
+
+  uint8_t stat = 0;
+  do {
+  	mcp2515_reset();
+	mcp2515_read(MCP2515_CANSTAT, &stat, 1);
+  	HAL_Delay(200);
+  } while ((stat & 0xe0) != 0x80);
 }
 
 static void _mcp2515_select() {
@@ -76,7 +82,6 @@ void mcp2515_reset() {
   _mcp2515_select();
   uint8_t c = SPI_RESET;
   HAL_SPI_Transmit(&spi, &c, (uint8_t) 1, HAL_MAX_DELAY);
-  HAL_Delay(200);
   _mcp2515_deselect();
 }
 
@@ -96,6 +101,7 @@ void mcp2515_write(uint8_t addr,
   HAL_SPI_Transmit(&spi, &c, (uint16_t) 1, HAL_MAX_DELAY);
   HAL_SPI_Transmit(&spi, &addr, (uint16_t) 1, HAL_MAX_DELAY);
   HAL_SPI_Transmit(&spi, tx, size, HAL_MAX_DELAY);
+  HAL_Delay(200);
   _mcp2515_deselect();
 }
 
